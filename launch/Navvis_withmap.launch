@@ -1,0 +1,50 @@
+<launch>
+
+  <!-- Create an argument to determine whether to use the external clock. -->
+  <arg name="external_clock" default="false" />
+
+  <!-- Play the bag file. -->
+  <node if="$(arg external_clock)" pkg="rosbag" type="play" name="player" output="screen" args="--clock $(find Navvis_robot)/bag/glennan_5_basic.bag /tf_trajectory:=/tf"/>
+  <node unless="$(arg external_clock)" pkg="rosbag" type="play" name="player" output="screen" args="$(find Navvis_robot)/bag/glennan_5_basic.bag /tf_trajectory:=/tf"/>
+
+  <!-- Active the map service. -->
+  <node pkg="map_server" type="map_server" name="my_map_server" args=" $(find maps_glennan)/maps/glennan5_map.yaml" />
+
+  <!-- Create an argument to determine whether to use the robot with imu. -->
+  <arg name="use_imu" default="true" />
+
+  <!-- Create an argument to determine whether to use the GUI. -->
+  <arg name="gui" value="false" />
+
+  <!-- Create an argument to determine whether to use the decay sensors. -->
+  <arg name="use_decay" default="false" />
+
+  <!-- What is the name of the file to use? -->
+  <arg if="$(arg use_imu)" name="filename" value="robot_withimu.xacro" />
+  <arg unless="$(arg use_imu)" name="filename" value="robot.xacro" />
+
+  <!-- The full path of the xacro file. -->
+  <arg name="file" value="$(find Navvis_robot)/urdf/$(arg filename)" />
+
+  <!-- Use the external_clock argument to set the /use_sim_time on the parameter server -->
+  <param name="use_sim_time" value="$(arg external_clock)" />
+
+  <!-- Use the file argument as the name of the file used lto set the /robot_description parameter on the parameter server -->
+  <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg file)" />
+
+  <!-- Run the robot_state_publisher. -->
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
+
+  <!-- Run RVIZ and use a specific configuration file. If RVIZ is closed, close everything. -->
+  <node if="$(arg use_decay)" pkg="rviz" type="rviz" name="rviz" args="-d $(find Navvis_robot)/config/config_with_decaymap.rviz" required="true" />
+  <node unless="$(arg use_decay)" pkg="rviz" type="rviz" name="rviz" args="-d $(find Navvis_robot)/config/config_withmap.rviz" required="true" />
+
+  <!-- Run the joint_state_publisher. -->
+  <node if="$(arg gui)" pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" />
+
+  <!-- Run the tf_publisher. -->
+  <node unless="$(arg gui)" pkg="tf2_ros" type="static_transform_publisher" name="wheel_left_publisher" args="-0.1 0.4 0.0 0.0 0.0 -1.57 base wheel_left" />
+  <node unless="$(arg gui)" pkg="tf2_ros" type="static_transform_publisher" name="wheel_right_publisher" args="-0.1 -0.4 0.0 0.0 0.0 -1.57 base wheel_right" />
+  <node unless="$(arg gui)" pkg="tf2_ros" type="static_transform_publisher" name="wheel_center_publisher" args="0.1 0.0 0.0 0.0 0.0 -1.57 base wheel_center" />
+
+</launch>
